@@ -1,0 +1,4 @@
+Testing connections...
+[OK] PostgreSQL connection successful!
+[OK] Redis connection successful!
+[OK] Pinecone connection successful! Index 'et-market-oracle' found.

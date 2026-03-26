@@ -1,0 +1,21 @@
+[project]
+name = "et-market-oracle"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "celery>=5.6.2",
+    "fastapi>=0.135.2",
+    "feedparser>=6.0.12",
+    "langchain>=1.2.13",
+    "langchain-openai>=1.1.12",
+    "pinecone>=6.0.0",
+    "psycopg2-binary>=2.9.11",
+    "pydantic-settings>=2.13.1",
+    "python-dotenv>=1.2.2",
+    "redis>=7.4.0",
+    "sqlalchemy>=2.0.48",
+    "uvicorn>=0.42.0",
+    "yfinance>=1.2.0",
+]
