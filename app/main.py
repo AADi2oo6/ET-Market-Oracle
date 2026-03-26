@@ -1,0 +1,31 @@
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from app.core.config import settings
+
+app = FastAPI(
+    title=settings.PROJECT_NAME,
+    version=settings.VERSION,
+    description="Backend API for the ET Market Oracle Hackathon Project"
+)
+
+# Configure CORS for the frontend
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"], # In production, restrict this to your frontend URL
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+@app.get("/", tags=["Health"])
+async def root():
+    return {"message": f"Welcome to the {settings.PROJECT_NAME}"}
+
+@app.get("/health", tags=["Health"])
+async def health_check():
+    """Check if the API is running and configs are loaded."""
+    return {
+        "status": "healthy",
+        "pinecone_configured": bool(settings.PINECONE_API_KEY),
+        "database_configured": bool(settings.DATABASE_URL)
+    }

@@ -1,0 +1,23 @@
+
+services:
+  api:
+    build: .
+    container_name: et_oracle_api
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    volumes:
+      - ./app:/app/app # Live reload: changes in your IDE reflect immediately
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  worker:
+    build: .
+    container_name: et_oracle_worker
+    env_file:
+      - .env
+    volumes:
+      - ./app:/app/app
+    # We will define the celery_app later in Phase 4, but the container is ready for it.
+    # command: celery -A app.worker.celery_app worker --loglevel=info
+    command: tail -f /dev/null # Placeholder until we build the Celery tasks
