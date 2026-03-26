@@ -1,0 +1,28 @@
+﻿============================= test session starts =============================
+platform win32 -- Python 3.11.9, pytest-9.0.2, pluggy-1.6.0
+rootdir: C:\Users\adish\OneDrive\Documents\GitHub\ET Market Oracle
+configfile: pyproject.toml
+plugins: anyio-4.12.1
+collected 0 items / 2 errors
+
+=================================== ERRORS ====================================
+________________________ ERROR collecting test_out.txt ________________________
+..\..\..\..\AppData\Local\Programs\Python\Python311\Lib\pathlib.py:1059: in read_text
+    return f.read()
+           ^^^^^^^^
+<frozen codecs>:322: in decode
+    ???
+E   UnicodeDecodeError: 'utf-8' codec can't decode byte 0xff in position 0: invalid start byte
+______________________ ERROR collecting test_out_new.txt ______________________
+..\..\..\..\AppData\Local\Programs\Python\Python311\Lib\pathlib.py:1059: in read_text
+    return f.read()
+           ^^^^^^^^
+<frozen codecs>:322: in decode
+    ???
+E   UnicodeDecodeError: 'utf-8' codec can't decode byte 0xff in position 0: invalid start byte
+=========================== short test summary info ===========================
+ERROR test_out.txt - UnicodeDecodeError: 'utf-8' codec can't decode byte 0xff...
+ERROR test_out_new.txt - UnicodeDecodeError: 'utf-8' codec can't decode byte ...
+!!!!!!!!!!!!!!!!!!! Interrupted: 2 errors during collection !!!!!!!!!!!!!!!!!!!
+============================== 2 errors in 0.25s ==============================
+

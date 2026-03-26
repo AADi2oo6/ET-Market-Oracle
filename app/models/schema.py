@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime
-from sqlalchemy import Column, Integer, String, Text, DateTime, Date, Float, BigInteger, UniqueConstraint
+from sqlalchemy import Column, Integer, String, Text, DateTime, Date, Float, BigInteger, UniqueConstraint, Boolean
 from app.core.database import Base
 
 class NewsArticle(Base):
@@ -12,6 +12,7 @@ class NewsArticle(Base):
     summary = Column(Text, nullable=True)
     published_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
+    is_embedded = Column(Boolean, default=False)
 
 class MarketData(Base):
     __tablename__ = "market_data"
