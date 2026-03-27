@@ -2,7 +2,7 @@ from langchain_openai import ChatOpenAI
 from langgraph.prebuilt import create_react_agent
 
 from app.core.config import settings
-from app.agents.tools import search_market_news, get_stock_price, fetch_dynamic_stock_data
+from app.agents.tools import search_market_news, get_stock_price, fetch_dynamic_stock_data, simulate_trade
 
 def create_market_agent():
     """
@@ -14,7 +14,7 @@ def create_market_agent():
         base_url="https://go.fastrouter.ai/api/v1"
     )
     
-    tools = [search_market_news, get_stock_price, fetch_dynamic_stock_data]
+    tools = [search_market_news, get_stock_price, fetch_dynamic_stock_data, simulate_trade]
     
     system_prompt = (
         "You are the ET Market Oracle, an elite financial advisor. "

@@ -1,8 +1,9 @@
 import streamlit as st
 import logging
 import requests
+import yfinance as yf
+import pandas as pd
 from streamlit_cookies_controller import CookieController
-
 from app.core.database import SessionLocal
 from app.agents.orchestrator import create_market_agent
 
@@ -276,6 +277,44 @@ with st.sidebar:
 st.title("🤖 ET Market Oracle")
 st.markdown("Your elite, tool-calling financial advisor.")
 
+if "tracked_stocks" in st.session_state and st.session_state.tracked_stocks and st.session_state.auth_status in ["logged_in", "guest"]:
+    with st.expander("📊 Live Watchlist Charts & Comparison", expanded=False):
+        
+        # 0. Add timeframe selector
+        timeframe = st.radio("Select Timeframe:", ["1mo", "6mo", "1y", "5y", "max"], horizontal=True)
+        
+        # 1. Add a multiselect specifically for filtering the chart
+        stocks_to_plot = st.multiselect(
+            "Select stocks to compare on the chart:",
+            options=st.session_state.tracked_stocks,
+            default=st.session_state.tracked_stocks
+        )
+        
+        if stocks_to_plot:
+            try:
+                with st.spinner("Fetching comparison data..."):
+                    # 2. Create an empty DataFrame to hold all stock prices
+                    chart_data = pd.DataFrame()
+                    
+                    # 3. Fetch data for each selected stock and add it as a column
+                    for ticker in stocks_to_plot:
+                        stock = yf.Ticker(ticker)
+                        hist = stock.history(period=timeframe)
+                        if not hist.empty:
+                            # Add the 'Close' price as a new column named after the ticker
+                            chart_data[ticker] = hist['Close']
+                    
+                    # 4. Draw a single unified chart (Streamlit automatically color-codes multiple columns!)
+                    if not chart_data.empty:
+                        st.line_chart(chart_data, height=400)
+                    else:
+                        st.caption("No historical data found for selected stocks.")
+                        
+            except Exception as e:
+                st.error(f"Error generating comparison chart: {str(e)}")
+        else:
+            st.info("Please select at least one stock to view the chart.")
+
 # Render previous chat messages
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
@@ -291,6 +330,9 @@ if prompt := st.chat_input("Ask about your portfolio or market news..."):
         # Format the portfolio nicely for the LLM
         holdings_str = "\n".join([f"- {item['scheme_name']}: ₹{item['current_value']}" for item in st.session_state.portfolio])
         portfolio_context += f"\n\n[SYSTEM NOTE: The user's current portfolio holdings are:\n{holdings_str}\nBase your personalized advice, warnings, and news searches on these specific holdings.]"
+        
+        total_value = sum(item.get('current_value', 0) for item in st.session_state.portfolio) if "portfolio" in st.session_state else 0
+        portfolio_context += f"\n\n[SYSTEM NOTE: The user's total calculated portfolio net worth is exactly {total_value}. Pass this exact number into the simulate_trade tool if requested.]"
         
     if "tracked_stocks" in st.session_state and st.session_state.tracked_stocks:
         portfolio_context += f"\n\n[SYSTEM NOTE: The user is actively tracking these direct stocks: {', '.join(st.session_state.tracked_stocks)}. Prioritize news and price checks for these companies.]"
@@ -308,13 +350,24 @@ if prompt := st.chat_input("Ask about your portfolio or market news..."):
     # 5. Send the HIDDEN full prompt to the agent
     with st.spinner("Analyzing markets and your portfolio..."):
         try:
-            response = st.session_state.agent.invoke({"messages": [("user", full_prompt_for_llm)]})
+            # 1. Build the conversation history from session state (excluding the duplicate just-added prompt)
+            chat_history = []
+            for msg in st.session_state.messages[:-1]:
+                # Map Streamlit roles to LangGraph expected tuples
+                role = "assistant" if msg["role"] == "assistant" else "user"
+                chat_history.append((role, msg["content"]))
+            
+            # 2. Append the current prompt (which includes the hidden portfolio context)
+            chat_history.append(("user", full_prompt_for_llm))
+            
+            # 3. Send the entire history to the agent
+            response = st.session_state.agent.invoke({"messages": chat_history})
             
             bot_reply = "The agent did not return a valid message array."
             if "messages" in response and len(response["messages"]) > 0:
                 bot_reply = response["messages"][-1].content
                 
-            # Display and save the bot's reply
+            # 4. Display and save the bot's reply
             with st.chat_message("assistant"):
                 st.markdown(bot_reply)
             st.session_state.messages.append({"role": "assistant", "content": bot_reply})

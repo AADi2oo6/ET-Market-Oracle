@@ -68,3 +68,23 @@ def fetch_dynamic_stock_data(ticker: str) -> str:
         return f"Live Data for {name} ({ticker}): Current Price: {current_price}, Day High: {day_high}, Day Low: {day_low}."
     except Exception as e:
         return f"Could not fetch live data for {ticker}. Ensure the ticker symbol is correct."
+
+@tool
+def simulate_trade(ticker: str, quantity: int, current_portfolio_value: float) -> str:
+    """
+    Use this tool ONLY when a user asks 'what if I buy X shares of Y' or wants to simulate an investment. Pass the stock ticker, the number of shares, and the user's current total portfolio value.
+    """
+    try:
+        stock = yf.Ticker(ticker)
+        current_price = stock.info.get("currentPrice", stock.info.get("regularMarketPrice"))
+        
+        if not current_price:
+            return f"Could not simulate trade. Live price for {ticker} is unavailable."
+            
+        total_trade_value = current_price * quantity
+        simulated_net_worth = current_portfolio_value + total_trade_value
+        allocation_percentage = (total_trade_value / simulated_net_worth) * 100
+        
+        return f"Simulation Results for {quantity} shares of {ticker}:\n- Live Price: ₹{current_price}\n- Total Trade Cost: ₹{total_trade_value:,.2f}\n- Simulated New Net Worth: ₹{simulated_net_worth:,.2f}\n- This asset would make up {allocation_percentage:.1f}% of the new portfolio."
+    except Exception as e:
+        return f"Simulation failed for {ticker}: {str(e)}"
