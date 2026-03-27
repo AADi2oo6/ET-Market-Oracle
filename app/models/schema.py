@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime
-from sqlalchemy import Column, Integer, String, Text, DateTime, Date, Float, BigInteger, UniqueConstraint, Boolean, ForeignKey
+from sqlalchemy import Column, Integer, String, Text, DateTime, Date, Float, BigInteger, UniqueConstraint, Boolean, ForeignKey, JSON
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.core.database import Base
@@ -14,6 +14,7 @@ class User(Base):
     phone = Column(String, nullable=True)
     password_hash = Column(String, nullable=False)
     created_at = Column(DateTime, default=func.now())
+    tracked_stocks = Column(JSON, default=list)
 
     holdings = relationship("Holding", back_populates="user", cascade="all, delete-orphan")
 

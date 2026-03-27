@@ -47,6 +47,8 @@ if "token" not in st.session_state:
     st.session_state.token = None
 if "portfolio" not in st.session_state:
     st.session_state.portfolio = []
+if "tracked_stocks" not in st.session_state:
+    st.session_state.tracked_stocks = []
 
 # Cookie Hydration
 cookie_token = controller.get("auth_token")
@@ -55,13 +57,23 @@ if cookie_token and st.session_state.auth_status != "logged_in":
     st.session_state.token = cookie_token
 
 # Portfolio Auto-Fetch
-if st.session_state.auth_status == "logged_in" and not st.session_state.portfolio:
-    try:
-        res = requests.get(f"{API_URL}/portfolio/me", headers={"Authorization": f"Bearer {st.session_state.token}"})
-        if res.status_code == 200:
-            st.session_state.portfolio = res.json().get("holdings", [])
-    except Exception:
-        pass
+if st.session_state.auth_status == "logged_in":
+    headers = {"Authorization": f"Bearer {st.session_state.token}"}
+    if not st.session_state.portfolio:
+        try:
+            res = requests.get(f"{API_URL}/portfolio/me", headers=headers)
+            if res.status_code == 200:
+                st.session_state.portfolio = res.json().get("holdings", [])
+        except Exception:
+            pass
+            
+    if not st.session_state.tracked_stocks:
+        try:
+            w_res = requests.get(f"{API_URL}/watchlist/me", headers=headers)
+            if w_res.status_code == 200:
+                st.session_state.tracked_stocks = w_res.json().get("tracked_stocks", [])
+        except Exception:
+            pass
 
 # ==========================================
 # 4. Auth Gate
@@ -201,6 +213,47 @@ with st.sidebar:
             val = holding.get("current_value", 0)
             st.markdown(f"- **{scheme[:25]}...**\n  - ₹{val:,.2f}")
         
+        
+    st.divider()
+    
+    st.subheader("📈 Direct Equity Watchlist")
+    available_stocks = {
+        "Reliance Industries": "RELIANCE.NS",
+        "TCS": "TCS.NS",
+        "HDFC Bank": "HDFCBANK.NS",
+        "Tata Motors": "TATAMOTORS.NS",
+        "Infosys": "INFY.NS",
+        "ITC": "ITC.NS",
+        "State Bank of India": "SBIN.NS",
+        "Bharti Airtel": "BHARTIARTL.NS"
+    }
+    reverse_map = {v: k for k, v in available_stocks.items()}
+    current_names = [reverse_map[t] for t in st.session_state.tracked_stocks if t in reverse_map]
+    
+    selected_names = st.multiselect(
+        "Select stocks to track & auto-sync:", 
+        options=list(available_stocks.keys()), 
+        default=current_names
+    )
+    
+    if st.button("🔄 Sync Live Market Data"):
+        if st.session_state.auth_status != "logged_in":
+            st.error("Please login to save your watchlist.")
+        else:
+            selected_tickers = [available_stocks[name] for name in selected_names]
+            with st.spinner("Fetching live prices for watchlist..."):
+                try:
+                    headers = {"Authorization": f"Bearer {st.session_state.token}"}
+                    res = requests.post(f"{API_URL}/watchlist/sync", json={"tickers": selected_tickers}, headers=headers)
+                    if res.status_code == 200:
+                        st.session_state.tracked_stocks = selected_tickers
+                        st.success("Watchlist synced successfully!")
+                        st.rerun()
+                    else:
+                        st.error(res.json().get("detail", "Error syncing watchlist"))
+                except Exception as e:
+                    st.error(f"Error connecting to backend: {e}")
+
     st.divider()
     st.info("The **ET Market Oracle** is an elite AI agent backed by LangGraph. It dynamically searches Pinecone for market news or queries PostgreSQL for stock prices.")
 
@@ -232,27 +285,41 @@ for msg in st.session_state.messages:
 # 7. Chat Logic
 # ==========================================
 if prompt := st.chat_input("Ask about your portfolio or market news..."):
-    # Append the user's prompt
-    st.session_state.messages.append({"role": "user", "content": prompt})
+    # 1. Prepare the hidden context
+    portfolio_context = ""
+    if "portfolio" in st.session_state and st.session_state.portfolio:
+        # Format the portfolio nicely for the LLM
+        holdings_str = "\n".join([f"- {item['scheme_name']}: ₹{item['current_value']}" for item in st.session_state.portfolio])
+        portfolio_context += f"\n\n[SYSTEM NOTE: The user's current portfolio holdings are:\n{holdings_str}\nBase your personalized advice, warnings, and news searches on these specific holdings.]"
+        
+    if "tracked_stocks" in st.session_state and st.session_state.tracked_stocks:
+        portfolio_context += f"\n\n[SYSTEM NOTE: The user is actively tracking these direct stocks: {', '.join(st.session_state.tracked_stocks)}. Prioritize news and price checks for these companies.]"
     
+    # 2. Combine the user's prompt with the hidden context
+    full_prompt_for_llm = prompt + portfolio_context
+    
+    # 3. Display ONLY the user's original prompt in the UI
     with st.chat_message("user"):
         st.markdown(prompt)
         
-    with st.chat_message("assistant"):
-        with st.spinner("Analyzing markets & executing tools..."):
-            try:
-                # Call the LangGraph agent
-                response = st.session_state.agent.invoke({"messages": [("user", prompt)]})
+    # 4. Add the original prompt to the visual chat history
+    st.session_state.messages.append({"role": "user", "content": prompt})
+
+    # 5. Send the HIDDEN full prompt to the agent
+    with st.spinner("Analyzing markets and your portfolio..."):
+        try:
+            response = st.session_state.agent.invoke({"messages": [("user", full_prompt_for_llm)]})
+            
+            bot_reply = "The agent did not return a valid message array."
+            if "messages" in response and len(response["messages"]) > 0:
+                bot_reply = response["messages"][-1].content
                 
-                bot_reply = "The agent did not return a valid message array."
-                if "messages" in response and len(response["messages"]) > 0:
-                    bot_reply = response["messages"][-1].content
-                    
+            # Display and save the bot's reply
+            with st.chat_message("assistant"):
                 st.markdown(bot_reply)
-                
-                st.session_state.messages.append({"role": "assistant", "content": bot_reply})
-                
-            except Exception as e:
-                error_msg = f"**An error occurred explicitly during agent execution:**\n```\n{str(e)}\n```"
-                st.error(error_msg)
-                st.session_state.messages.append({"role": "assistant", "content": error_msg})
+            st.session_state.messages.append({"role": "assistant", "content": bot_reply})
+            
+        except Exception as e:
+            error_msg = f"**An error occurred explicitly during agent execution:**\n```\n{str(e)}\n```"
+            st.error(error_msg)
+            st.session_state.messages.append({"role": "assistant", "content": error_msg})
