@@ -1,7 +1,18 @@
 import uuid
 from datetime import datetime
 from sqlalchemy import Column, Integer, String, Text, DateTime, Date, Float, BigInteger, UniqueConstraint, Boolean
+from sqlalchemy.sql import func
 from app.core.database import Base
+
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String, nullable=False)
+    email = Column(String, unique=True, index=True, nullable=False)
+    phone = Column(String, nullable=True)
+    password_hash = Column(String, nullable=False)
+    created_at = Column(DateTime, default=func.now())
 
 class NewsArticle(Base):
     __tablename__ = "news_articles"

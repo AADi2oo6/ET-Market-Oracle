@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
+from app.api.auth import auth_router
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -16,6 +17,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Include Routers
+app.include_router(auth_router, prefix="/api/auth", tags=["Auth"])
 
 @app.get("/", tags=["Health"])
 async def root():
