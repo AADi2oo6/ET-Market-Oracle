@@ -1,6 +1,7 @@
 import streamlit as st
 import logging
 import requests
+from streamlit_cookies_controller import CookieController
 
 from app.core.database import SessionLocal
 from app.agents.orchestrator import create_market_agent
@@ -19,6 +20,11 @@ st.set_page_config(
     initial_sidebar_state="expanded",
     page_icon="🤖"
 )
+
+# ==========================================
+# 2.5 Cookies Initialization
+# ==========================================
+controller = CookieController()
 
 # ==========================================
 # 3. Session State
@@ -42,6 +48,21 @@ if "token" not in st.session_state:
 if "portfolio" not in st.session_state:
     st.session_state.portfolio = []
 
+# Cookie Hydration
+cookie_token = controller.get("auth_token")
+if cookie_token and st.session_state.auth_status != "logged_in":
+    st.session_state.auth_status = "logged_in"
+    st.session_state.token = cookie_token
+
+# Portfolio Auto-Fetch
+if st.session_state.auth_status == "logged_in" and not st.session_state.portfolio:
+    try:
+        res = requests.get(f"{API_URL}/portfolio/me", headers={"Authorization": f"Bearer {st.session_state.token}"})
+        if res.status_code == 200:
+            st.session_state.portfolio = res.json().get("holdings", [])
+    except Exception:
+        pass
+
 # ==========================================
 # 4. Auth Gate
 # ==========================================
@@ -62,9 +83,11 @@ if st.session_state.auth_status is None:
                     response = requests.post(f"{API_URL}/auth/login", json={"email": email, "password": password})
                     if response.status_code == 200:
                         data = response.json()
+                        token = data.get("access_token")
                         st.session_state.auth_status = "logged_in"
-                        st.session_state.token = data.get("access_token")
+                        st.session_state.token = token
                         st.session_state.user_name = data.get("name")
+                        controller.set("auth_token", token, max_age=86400)
                         st.success("Login successful!")
                         st.rerun()
                     else:
@@ -129,6 +152,18 @@ with st.sidebar:
     st.divider()
     
     st.markdown("**1-Click Portfolio Sync**")
+    
+    with st.popover("ℹ️ How to get your CAS file"):
+        st.markdown("""
+**Step-by-Step Guide:**
+1. Go to [camsonline.com](https://www.camsonline.com/).
+2. Click on **Statements > CAS - CAMS+KFintech**.
+3. Select **Detailed Statement**.
+4. Enter your registered Email and PAN Card number.
+5. You will receive a PDF in your email within 2 minutes.
+6. Upload that PDF here and use your **PAN Card (in ALL CAPS)** as the password!
+""")
+        
     uploaded_file = st.file_uploader("Upload CAS (CAMS/KFintech) PDF", type=["pdf"])
     cas_password = st.text_input("PDF Password (usually PAN)", type="password")
     
@@ -174,6 +209,7 @@ with st.sidebar:
         
     st.divider()
     if st.button("Logout"):
+        controller.remove("auth_token")
         st.session_state.auth_status = None
         st.session_state.token = None
         st.session_state.user_name = None

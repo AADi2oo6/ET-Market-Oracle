@@ -11,6 +11,7 @@ from typing import Optional
 from app.core.database import get_db
 from app.models.schema import User, Holding
 from app.core.security import SECRET_KEY, ALGORITHM
+from app.api.auth import get_current_user
 
 portfolio_router = APIRouter()
 
@@ -94,3 +95,17 @@ async def upload_portfolio(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
+
+@portfolio_router.get("/me")
+def get_portfolio(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    holdings = db.query(Holding).filter(Holding.user_id == current_user.id).all()
+    holdings_list = [
+        {
+            "scheme_name": h.scheme_name,
+            "folio_number": h.folio_number,
+            "units": h.units,
+            "current_value": h.current_value
+        }
+        for h in holdings
+    ]
+    return {"status": "success", "holdings": holdings_list}
