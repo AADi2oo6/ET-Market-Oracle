@@ -2,6 +2,7 @@ from langchain.tools import tool
 from app.core.database import SessionLocal
 from app.models.schema import MarketData
 from app.core.vectorstore import get_vectorstore
+import streamlit as st
 import yfinance as yf
 
 @tool
@@ -55,7 +56,7 @@ def get_stock_price(ticker: str) -> str:
 @tool
 def fetch_dynamic_stock_data(ticker: str) -> str:
     """
-    Use this tool to fetch live, real-time pricing and basic info for ANY stock ticker (e.g., ZOMATO.NS, TSLA, AAPL) that is NOT currently in the database.
+    Use this to fetch live pricing. CRITICAL RULE: For Indian stocks, you MUST append '.NS' to the ticker (e.g., ZOMATO.NS, RELIANCE.NS, TATAMOTORS.NS). US stocks do not need a suffix.
     """
     try:
         stock = yf.Ticker(ticker)
@@ -65,7 +66,7 @@ def fetch_dynamic_stock_data(ticker: str) -> str:
         day_low = info.get("dayLow", "N/A")
         name = info.get("shortName", ticker)
         
-        return f"Live Data for {name} ({ticker}): Current Price: {current_price}, Day High: {day_high}, Day Low: {day_low}."
+        return f"Live Data for {name} ({ticker}): Current Price: {current_price}, Day High: {day_high}, Day Low: {day_low}. [CHART_TICKER:{ticker}]"
     except Exception as e:
         return f"Could not fetch live data for {ticker}. Ensure the ticker symbol is correct."
 

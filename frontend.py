@@ -1,6 +1,7 @@
 import streamlit as st
 import logging
 import requests
+import re
 import yfinance as yf
 import pandas as pd
 from streamlit_cookies_controller import CookieController
@@ -306,6 +307,8 @@ if "tracked_stocks" in st.session_state and st.session_state.tracked_stocks and 
                     
                     # 4. Draw a single unified chart (Streamlit automatically color-codes multiple columns!)
                     if not chart_data.empty:
+                        if isinstance(chart_data.index, pd.DatetimeIndex):
+                            chart_data.index = chart_data.index.tz_localize(None)
                         st.line_chart(chart_data, height=400)
                     else:
                         st.caption("No historical data found for selected stocks.")
@@ -318,7 +321,22 @@ if "tracked_stocks" in st.session_state and st.session_state.tracked_stocks and 
 # Render previous chat messages
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
-        st.markdown(msg["content"])
+        if msg.get("type") == "chart":
+            st.caption("📈 Context chart:")
+            # Re-fetch and draw (or use cached data if available)
+            c_data = pd.DataFrame()
+            for t in msg["tickers"]:
+                try:
+                    h = yf.Ticker(t).history(period="3mo")
+                    if not h.empty:
+                        c_data[t] = h['Close']
+                except Exception:
+                    pass
+            if not c_data.empty and isinstance(c_data.index, pd.DatetimeIndex):
+                c_data.index = c_data.index.tz_localize(None)
+            st.line_chart(c_data, height=250)
+        else:
+            st.markdown(msg["content"])
 
 # ==========================================
 # 7. Chat Logic
@@ -363,14 +381,50 @@ if prompt := st.chat_input("Ask about your portfolio or market news..."):
             # 3. Send the entire history to the agent
             response = st.session_state.agent.invoke({"messages": chat_history})
             
-            bot_reply = "The agent did not return a valid message array."
+            raw_bot_reply = "The agent did not return a valid message array."
             if "messages" in response and len(response["messages"]) > 0:
-                bot_reply = response["messages"][-1].content
+                raw_bot_reply = response["messages"][-1].content
                 
-            # 4. Display and save the bot's reply
+            # Extract the hidden tickers
+            chart_tickers = re.findall(r'\[CHART_TICKER:(.*?)\]', raw_bot_reply)
+
+            # Clean the reply so the user doesn't see the tags
+            clean_reply = re.sub(r'\[CHART_TICKER:.*?\]', '', raw_bot_reply).strip()
+
             with st.chat_message("assistant"):
-                st.markdown(bot_reply)
-            st.session_state.messages.append({"role": "assistant", "content": bot_reply})
+                st.markdown(clean_reply)
+
+                # If we found a trigger, draw the chart!
+                if chart_tickers:
+                    st.caption("📈 Context chart:")
+                    inline_chart_data = pd.DataFrame()
+                    for t in chart_tickers:
+                        # Clean the string
+                        t = t.strip().upper()
+                        # Hackathon Failsafe: Auto-append .NS for common Indian stocks if the AI forgets
+                        indian_bluechips = ["TCS", "ZOMATO", "RELIANCE", "ITC", "INFY", "SBIN", "HDFCBANK", "TATAMOTORS"]
+                        if t in indian_bluechips:
+                            t += ".NS"
+                            
+                        try:
+                            hist = yf.Ticker(t).history(period="3mo")
+                            if not hist.empty:
+                                inline_chart_data[t] = hist['Close']
+                        except:
+                            pass
+
+                    if not inline_chart_data.empty:
+                        if isinstance(inline_chart_data.index, pd.DatetimeIndex):
+                            inline_chart_data.index = inline_chart_data.index.tz_localize(None)
+                        st.line_chart(inline_chart_data, height=250)
+
+            # Save to visual history with the extracted tickers
+            st.session_state.messages.append({
+                "role": "assistant", 
+                "content": clean_reply, 
+                "type": "chart" if chart_tickers else "text", 
+                "tickers": chart_tickers
+            })
             
         except Exception as e:
             error_msg = f"**An error occurred explicitly during agent execution:**\n```\n{str(e)}\n```"
