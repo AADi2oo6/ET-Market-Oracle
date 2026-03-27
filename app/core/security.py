@@ -3,7 +3,7 @@ from passlib.context import CryptContext
 import jwt
 
 # Hardcoded secret for hackathon (normally loaded from env)
-SECRET_KEY = "hackathon_super_secret"
+SECRET_KEY = "et_market_oracle_super_secret_key_2026_hackathon"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_HOURS = 24
 
