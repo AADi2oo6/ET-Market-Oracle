@@ -2,7 +2,6 @@ from langchain.tools import tool
 from app.core.database import SessionLocal
 from app.models.schema import MarketData
 from app.core.vectorstore import get_vectorstore
-import streamlit as st
 import yfinance as yf
 
 @tool
