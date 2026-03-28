@@ -17,6 +17,7 @@ class User(Base):
     tracked_stocks = Column(JSON, default=list)
 
     holdings = relationship("Holding", back_populates="user", cascade="all, delete-orphan")
+    alerts = relationship("UserAlert", back_populates="user", cascade="all, delete-orphan")
 
 class Holding(Base):
     __tablename__ = "holdings"
@@ -56,3 +57,16 @@ class MarketData(Base):
     __table_args__ = (
         UniqueConstraint("ticker", "date", name="uq_market_data_ticker_date"),
     )
+
+class UserAlert(Base):
+    __tablename__ = "user_alerts"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    ticker = Column(String, nullable=True)
+    message = Column(String, nullable=False)
+    severity = Column(String, default="medium")  # 'high', 'medium', 'low'
+    is_read = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    user = relationship("User", back_populates="alerts")

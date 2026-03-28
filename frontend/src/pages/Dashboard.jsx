@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import Sidebar from '../components/Sidebar';
 import WatchlistChart from '../components/WatchlistChart';
 import ChatWindow from '../components/ChatWindow';
+import NotificationBell from '../components/NotificationBell';
 
 export default function Dashboard() {
   const { userName, logout, authStatus } = useAuth();
@@ -27,6 +28,7 @@ export default function Dashboard() {
             <span className="text-sm text-[#908fa0]">
               {authStatus === 'guest' ? '👤 Guest' : `👋 ${userName}`}
             </span>
+            {authStatus !== 'guest' && <NotificationBell />}
             <motion.button
               onClick={logout}
               whileHover={{ scale: 1.05 }}

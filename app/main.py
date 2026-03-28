@@ -7,6 +7,7 @@ from app.api.watchlist import watchlist_router
 
 from app.api.market import market_router
 from app.api.agent import agent_router
+from app.api.alerts import alerts_router
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -29,6 +30,7 @@ app.include_router(portfolio_router, prefix="/api/portfolio", tags=["Portfolio"]
 app.include_router(watchlist_router, prefix="/api/watchlist", tags=["Watchlist"])
 app.include_router(market_router, prefix="/api/market", tags=["Market"])
 app.include_router(agent_router, prefix="/api/agent", tags=["Agent"])
+app.include_router(alerts_router, prefix="/api/alerts", tags=["Alerts"])
 
 @app.get("/", tags=["Health"])
 async def root():
