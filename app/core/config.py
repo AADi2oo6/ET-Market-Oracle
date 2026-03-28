@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     PINECONE_API_KEY: str
     PINECONE_INDEX_NAME: str = "et-market-oracle"
     FASTROUTER_API_KEY: str
+    ALLOWED_ORIGINS: list[str] = ["*"]
 
     # Load from the .env file
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
