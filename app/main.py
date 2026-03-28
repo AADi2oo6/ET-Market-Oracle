@@ -5,6 +5,9 @@ from app.api.auth import auth_router
 from app.api.portfolio import portfolio_router
 from app.api.watchlist import watchlist_router
 
+from app.api.market import market_router
+from app.api.agent import agent_router
+
 app = FastAPI(
     title=settings.PROJECT_NAME,
     version=settings.VERSION,
@@ -24,6 +27,8 @@ app.add_middleware(
 app.include_router(auth_router, prefix="/api/auth", tags=["Auth"])
 app.include_router(portfolio_router, prefix="/api/portfolio", tags=["Portfolio"])
 app.include_router(watchlist_router, prefix="/api/watchlist", tags=["Watchlist"])
+app.include_router(market_router, prefix="/api/market", tags=["Market"])
+app.include_router(agent_router, prefix="/api/agent", tags=["Agent"])
 
 @app.get("/", tags=["Health"])
 async def root():
